@@ -38,7 +38,7 @@ class SpecData(object):
 
             # skip the specfile if buildarch differs
             buildarch = spec.packages.get("default").buildarch
-            if buildarch != "noarch" and buildarch != self.arch:
+            if buildarch not in ["noarch", self.arch]:
                 self.logger.debug(f"Skipping spec file: {specFile}")
                 continue
 
@@ -78,7 +78,7 @@ class SpecData(object):
         specObjs = self.getSpecObjects(depPkg.package)
         try:
             for obj in specObjs:
-                verrel = obj.version + "-" + obj.release
+                verrel = f"{obj.version}-{obj.release}"
                 if depPkg.compare == ">=":
                     if LooseVersion(verrel) >= LooseVersion(depPkg.version):
                         return obj.version
@@ -100,36 +100,23 @@ class SpecData(object):
                         return obj.version
         except Exception as e:
             self.logger.error(
-                "Exception happened while searching for: "
-                + depPkg.package
-                + depPkg.compare
-                + depPkg.version
+                f"Exception happened while searching for: {depPkg.package}{depPkg.compare}{depPkg.version}"
             )
             raise e
 
-        # about to throw exception
-        availableVersions = ""
-        for obj in specObjs:
-            availableVersions += (
-                " " + obj.name + "-" + obj.version + "-" + obj.release
-            )
+        availableVersions = "".join(
+            f" {obj.name}-{obj.version}-{obj.release}" for obj in specObjs
+        )
         raise Exception(
-            "Could not find package: "
-            + depPkg.package
-            + depPkg.compare
-            + depPkg.version
-            + " available specs:"
-            + availableVersions
+            f"Could not find package: {depPkg.package}{depPkg.compare}{depPkg.version} available specs:{availableVersions}"
         )
 
     def _getSpecObjField(self, package, version, field):
         for specObj in self.getSpecObjects(package):
             if specObj.version == version:
                 return field(specObj)
-        self.logger.error(
-            "Could not find " + package + "-" + version + " package from specs"
-        )
-        raise Exception("Invalid package: " + package + "-" + version)
+        self.logger.error(f"Could not find {package}-{version} package from specs")
+        raise Exception(f"Invalid package: {package}-{version}")
 
     def getBuildRequiresForPackage(self, package, version):
         buildRequiresList = []
@@ -137,17 +124,16 @@ class SpecData(object):
             package, version, field=lambda x: x.buildRequires
         ):
             properVersion = self._getProperVersion(pkg)
-            buildRequiresList.append(pkg.package + "-" + properVersion)
+            buildRequiresList.append(f"{pkg.package}-{properVersion}")
         return buildRequiresList
 
     def getExtraBuildRequiresForPackage(self, package, version):
-        packages = []
-        for pkg in self._getSpecObjField(
-            package, version, field=lambda x: x.extraBuildRequires
-        ):
-            # no version deps for publishrpms - use just name
-            packages.append(pkg.package)
-        return packages
+        return [
+            pkg.package
+            for pkg in self._getSpecObjField(
+                package, version, field=lambda x: x.extraBuildRequires
+            )
+        ]
 
     def getBuildRequiresNativeForPackage(self, package, version):
         packages = []
@@ -155,7 +141,7 @@ class SpecData(object):
             package, version, field=lambda x: x.buildRequiresNative
         ):
             properVersion = self._getProperVersion(pkg)
-            packages.append(pkg.package + "-" + properVersion)
+            packages.append(f"{pkg.package}-{properVersion}")
         return packages
 
     def getBuildRequiresForPkg(self, pkg):
@@ -169,7 +155,7 @@ class SpecData(object):
             package, version, field=lambda x: x.installRequires
         ):
             properVersion = self._getProperVersion(pkg)
-            requiresList.append(pkg.package + "-" + properVersion)
+            requiresList.append(f"{pkg.package}-{properVersion}")
         return requiresList
 
     def getRequiresAllForPkg(self, pkg):
@@ -215,12 +201,10 @@ class SpecData(object):
                     requiresPackages = specObj.installRequiresPackages[package]
                     for pkg in requiresPackages:
                         properVersion = self._getProperVersion(pkg)
-                        requiresList.append(pkg.package + "-" + properVersion)
+                        requiresList.append(f"{pkg.package}-{properVersion}")
                 return requiresList
-        self.logger.error(
-            "Could not find " + package + "-" + version + " package from specs"
-        )
-        raise Exception("Invalid package: " + package + "-" + version)
+        self.logger.error(f"Could not find {package}-{version} package from specs")
+        raise Exception(f"Invalid package: {package}-{version}")
 
     def getRequiresForPkg(self, pkg):
         package, version = StringUtils.splitPackageNameAndVersion(pkg)
@@ -233,7 +217,7 @@ class SpecData(object):
         )
         for pkg in checkBuildRequiresPackages:
             properVersion = self._getProperVersion(pkg)
-            checkBuildRequiresList.append(pkg.package + "-" + properVersion)
+            checkBuildRequiresList.append(f"{pkg.package}-{properVersion}")
         return checkBuildRequiresList
 
     # Returns list of SpecObjects for given subpackage name
@@ -242,10 +226,7 @@ class SpecData(object):
         return self.mapSpecObjects[specName]
 
     def getPkgNamesFromObj(self, objlist):
-        listPkgName = []
-        for name in objlist:
-            listPkgName.append(name.package)
-        return listPkgName
+        return [name.package for name in objlist]
 
     def getRelease(self, package, version):
         return self._getSpecObjField(
@@ -253,10 +234,7 @@ class SpecData(object):
         )
 
     def getVersions(self, package):
-        versions = []
-        for specObj in self.getSpecObjects(package):
-            versions.append(specObj.version)
-        return versions
+        return [specObj.version for specObj in self.getSpecObjects(package)]
 
     def getHighestVersion(self, package):
         return self.getSpecObjects(package)[0].version
@@ -293,11 +271,8 @@ class SpecData(object):
         )
 
     def getPackagesForPkg(self, pkg):
-        pkgs = []
         package, version = StringUtils.splitPackageNameAndVersion(pkg)
-        for p in self.getPackages(package, version):
-            pkgs.append(p + "-" + version)
-        return pkgs
+        return [f"{p}-{version}" for p in self.getPackages(package, version)]
 
     def getRPMPackages(self, package, version):
         return self._getSpecObjField(
@@ -313,8 +288,8 @@ class SpecData(object):
             specName = self.mapPackageToSpec[package]
             if specName in self.mapSpecObjects:
                 return specName
-        self.logger.error("Could not find " + package + " package from specs")
-        raise Exception("Invalid package:" + package)
+        self.logger.error(f"Could not find {package} package from specs")
+        raise Exception(f"Invalid package:{package}")
 
     def isRPMPackage(self, package):
         if package in self.mapPackageToSpec:
@@ -352,7 +327,7 @@ class SpecData(object):
     # Converts "glibc-devel-2.28" into "glibc-2.28"
     def getBasePkg(self, pkg):
         package, version = StringUtils.splitPackageNameAndVersion(pkg)
-        return self.getSpecName(package) + "-" + version
+        return f"{self.getSpecName(package)}-{version}"
 
     def printAllObjects(self):
         listSpecs = self.mapSpecObjects.keys()
@@ -430,13 +405,12 @@ class SPECS(object):
 
         # adding kernelsubrelease rpm macro
         a, b, c = kernelversion.split(".")
-        kernelsubrelease = "%02d%02d%03d%03d" % (
+        if kernelsubrelease := "%02d%02d%03d%03d" % (
             int(a),
             int(b),
             int(c),
             int(kernelrelease_comp[0]),
-        )
-        if kernelsubrelease:
+        ):
             kernelsubrelease = f".{kernelsubrelease}"
             constants.addMacro("kernelsubrelease", kernelsubrelease)
 

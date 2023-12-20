@@ -207,8 +207,7 @@ def buildSourcesList(yamlDir, blackListPkgs, logger, singleFile=True):
                 url = SPECS.getData().getURL(package, version)
 
             sourceName = None
-            listSourceNames = SPECS.getData().getSources(package, version)
-            if listSourceNames:
+            if listSourceNames := SPECS.getData().getSources(package, version):
                 sourceName = listSourceNames[0]
                 sha512 = SPECS.getData().getChecksum(
                     package, version, sourceName
@@ -274,13 +273,9 @@ def buildSRPMList(
             """
             curleasever = ossrelease
             if not ossrelease.endswith(dist_tag):
-                curleasever = "%s%s" % (ossrelease, dist_tag)
-            srpm_file_name = "%s-%s-%s.src.rpm" % (
-                ossname,
-                ossversion,
-                curleasever,
-            )
-            logger.info("srpm name is %s" % (srpm_file_name))
+                curleasever = f"{ossrelease}{dist_tag}"
+            srpm_file_name = f"{ossname}-{ossversion}-{curleasever}.src.rpm"
+            logger.info(f"srpm name is {srpm_file_name}")
             listFoundSRPMFiles = cmdUtils.findFile(srpm_file_name, srpmPath)
 
             srpmName = None

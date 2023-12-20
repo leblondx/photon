@@ -14,7 +14,7 @@ def main():
         try:
             json.load(open(sys.argv[arg]))
         except ValueError as e:
-            print("Check: " + sys.argv[arg] + " for syntax errors")
+            print(f"Check: {sys.argv[arg]} for syntax errors")
             raise Exception(e)
 
 

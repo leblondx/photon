@@ -133,9 +133,8 @@ class BuilderClient:
             return True
 
         print(
-            "Unable to notify master, error code = %s"
-            % response.status_code,
-            ",response = %s" % response.json,
+            f"Unable to notify master, error code = {response.status_code}",
+            f",response = {response.json}",
         )
         sys.exit(1)
 

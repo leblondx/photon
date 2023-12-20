@@ -442,8 +442,7 @@ class constants(object):
 
     @staticmethod
     def getPullSourcesURLs(packageName):
-        urls = []
-        urls.append(constants.pullsourcesURL)
+        urls = [constants.pullsourcesURL]
         if packageName in constants.extrasourcesURLs:
             urls.extend(constants.extrasourcesURLs[packageName])
         return urls
@@ -578,14 +577,12 @@ class constants(object):
                 constants.hostRpmIsNotUsable = 1
                 break
 
-        if constants.hostRpmIsNotUsable < 0:
-            constants.hostRpmIsNotUsable = 0
-
+        constants.hostRpmIsNotUsable = max(constants.hostRpmIsNotUsable, 0)
         return constants.hostRpmIsNotUsable
 
     def enable_fips_in_make_check():
         constants.listMakeCheckRPMPkgtoInstall.append("openssl-fips-provider")
 
-    def set_resume_build(val):
-        if val:
+    def set_resume_build(self):
+        if self:
             constants.resume_build = True

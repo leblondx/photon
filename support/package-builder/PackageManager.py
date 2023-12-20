@@ -50,7 +50,7 @@ class PackageManager(object):
         for package in constants.listCoreToolChainPackages:
             version = SPECS.getData().getHighestVersion(package)
             rpmPkg = pkgUtils.findRPMFile(package, version)
-            self.sortedPackageList.append(package + "-" + version)
+            self.sortedPackageList.append(f"{package}-{version}")
             if rpmPkg is not None:
                 doneList.append(f"{package}-{version}")
                 continue
@@ -79,12 +79,12 @@ class PackageManager(object):
         pkgCount = self.buildToolChain()
         # Stage 2 makes sence only for native tools
         if not constants.crossCompiling:
-            if self.pkgBuildType == "container":
                 # Stage 1 build container
                 # TODO image name constants.buildContainerImageName
-                if pkgCount > 0 or not self.dockerClient.images.list(
+            if pkgCount > 0 or not self.dockerClient.images.list(
                     constants.buildContainerImage
                 ):
+                if self.pkgBuildType == "container":
                     self._createBuildContainer(True)
             self.logger.info("Step 2: Building stage 2 of the toolchain...")
             self.logger.info(constants.listToolChainPackages)
@@ -112,7 +112,6 @@ class PackageManager(object):
             self._buildTestPackages(buildThreads)
             constants.rpmCheck = True
             constants.addMacro("with_check", "1")
-            self._buildGivenPackages(listPackages, buildThreads)
         else:
             self.buildToolChainPackages(buildThreads)
             self.logger.info(
@@ -120,7 +119,7 @@ class PackageManager(object):
             )
             self.logger.info(listPackages)
             self.logger.info("")
-            self._buildGivenPackages(listPackages, buildThreads)
+        self._buildGivenPackages(listPackages, buildThreads)
         self.logger.info("Package build has been completed")
         self.logger.info("")
 
@@ -153,17 +152,15 @@ class PackageManager(object):
         listPackages = SPECS.getData().getListPackages()
         for package in listPackages:
             for version in SPECS.getData().getVersions(package):
-                # Mark package available only if all subpackages are available
-                packageIsAlreadyBuilt = True
                 listRPMPackages = SPECS.getData().getRPMPackages(
                     package, version
                 )
-                for rpmPkg in listRPMPackages:
-                    if pkgUtils.findRPMFile(rpmPkg, version) is None:
-                        packageIsAlreadyBuilt = False
-                        break
+                packageIsAlreadyBuilt = all(
+                    pkgUtils.findRPMFile(rpmPkg, version) is not None
+                    for rpmPkg in listRPMPackages
+                )
                 if packageIsAlreadyBuilt:
-                    listAvailablePackages.add(package + "-" + version)
+                    listAvailablePackages.add(f"{package}-{version}")
 
         return listAvailablePackages
 
@@ -187,9 +184,8 @@ class PackageManager(object):
 
         if constants.rpmCheck:
             self.sortedPackageList = listPackagesToBuild
-        else:
-            if not self._readPackageBuildData(listPackagesToBuild):
-                return False
+        elif not self._readPackageBuildData(listPackagesToBuild):
+            return False
 
         if self.sortedPackageList:
             self.logger.info("List of packages yet to be built...")
@@ -231,7 +227,7 @@ class PackageManager(object):
         for pkg in listPackages:
             base = SPECS.getData().getSpecName(pkg)
             for version in SPECS.getData().getVersions(base):
-                listPackageNamesAndVersions.add(base + "-" + version)
+                listPackageNamesAndVersions.add(f"{base}-{version}")
 
         returnVal = self._calculateParams(listPackageNamesAndVersions)
         if not returnVal:
@@ -266,25 +262,18 @@ class PackageManager(object):
             self.logger.debug("Waiting for all remaining worker threads")
             ThreadPool.join_all()
 
-        setFailFlag = False
-        allPackagesBuilt = False
-        if Scheduler.isAnyPackagesFailedToBuild():
-            setFailFlag = True
-
-        if Scheduler.isAllPackagesBuilt():
-            allPackagesBuilt = True
-
+        setFailFlag = bool(Scheduler.isAnyPackagesFailedToBuild())
+        allPackagesBuilt = bool(Scheduler.isAllPackagesBuilt())
         if setFailFlag:
             self.logger.error("Some of the packages failed:")
             self.logger.error(Scheduler.listOfFailedPackages)
             raise Exception("Failed during building package")
 
-        if not setFailFlag:
-            if allPackagesBuilt:
-                self.logger.debug("All packages built successfully")
-            else:
-                self.logger.error("Build stopped unexpectedly.Unknown error.")
-                raise Exception("Unknown error")
+        if allPackagesBuilt:
+            self.logger.debug("All packages built successfully")
+        else:
+            self.logger.error("Build stopped unexpectedly.Unknown error.")
+            raise Exception("Unknown error")
 
     def _createBuildContainer(self, usePublishedRPMs):
         self.logger.debug("Generating photon build container..")
@@ -311,14 +300,14 @@ class PackageManager(object):
             if chroot:
                 chroot.destroy()
             raise e
-        self.logger.debug("createBuildContainer: " + chroot.getID())
+        self.logger.debug(f"createBuildContainer: {chroot.getID()}")
 
         # Create photon build container using toolchain chroot
         chroot.unmountAll()
         # TODO: Coalesce logging
-        cmd = "cd " + chroot.getID() + " && tar -czf ../tcroot.tar.gz ."
+        cmd = f"cd {chroot.getID()} && tar -czf ../tcroot.tar.gz ."
         self.cmdUtils.runBashCmd(cmd, logfn=self.logger.debug)
-        cmd = "mv " + chroot.getID() + "/../tcroot.tar.gz ."
+        cmd = f"mv {chroot.getID()}/../tcroot.tar.gz ."
         self.cmdUtils.runBashCmd(cmd, logfn=self.logger.debug)
         # TODO: Container name, docker file name from constants.
         self.dockerClient.images.build(

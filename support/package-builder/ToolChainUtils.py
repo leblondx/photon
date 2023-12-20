@@ -55,7 +55,7 @@ class ToolChainUtils(object):
                 listFilterRPMFiles.append(f)
         if len(listFilterRPMFiles) == 1:
             return listFilterRPMFiles[0]
-        if len(listFilterRPMFiles) == 0:
+        if not listFilterRPMFiles:
             return None
         if len(listFilterRPMFiles) > 1:
             self.logger.error(
@@ -85,7 +85,6 @@ class ToolChainUtils(object):
         availablePackages=None,
     ):
         self.logger.debug("Installing toolchain RPMS.......")
-        rpmFiles = ""
         packages = ""
         listBuildRequiresPackages = []
         ChrootID = chroot.getID()
@@ -108,6 +107,7 @@ class ToolChainUtils(object):
             )
 
         pkgUtils = PackageUtils(self.logName, self.logPath)
+        rpmFiles = ""
         for package in listRPMsToInstall:
             rpmFile = None
             version = None
@@ -128,11 +128,7 @@ class ToolChainUtils(object):
                 )
 
             if availablePackages is not None:
-                basePkg = (
-                    SPECS.getData(constants.buildArch).getSpecName(package)
-                    + "-"
-                    + version
-                )
+                basePkg = f"{SPECS.getData(constants.buildArch).getSpecName(package)}-{version}"
                 isAvailable = basePkg in availablePackages
             else:
                 # if availablePackages is not provided (rear case) it is safe
@@ -169,19 +165,18 @@ class ToolChainUtils(object):
                     or constants.crossCompiling
                 ):
                     raise Exception(
-                        "%s-%s.%s not found in available packages"
-                        % (package, version, constants.buildArch)
+                        f"{package}-{version}.{constants.buildArch} not found in available packages"
                     )
 
                 # Safe to use published RPM
                 rpmFile = self._findPublishedRPM(
                     package, constants.prevPublishRPMRepo
                 )
-                if rpmFile is None:
-                    self.logger.error(
-                        f"Unable to find published rpm: {package}"
-                    )
-                    raise Exception("Input Error")
+            if rpmFile is None:
+                self.logger.error(
+                    f"Unable to find published rpm: {package}"
+                )
+                raise Exception("Input Error")
             rpmFiles += f" {rpmFile}"
             packages += f" {package}-{version}"
 
@@ -218,12 +213,11 @@ class ToolChainUtils(object):
         if not listOfToolChainPkgs:
             return
         self.logger.debug(
-            f"Installing package specific toolchain RPMs for {packageName}: "
-            + str(listOfToolChainPkgs)
+            f"Installing package specific toolchain RPMs for {packageName}: {str(listOfToolChainPkgs)}"
         )
-        rpmFiles = ""
         packages = ""
 
+        rpmFiles = ""
         for package in listOfToolChainPkgs:
             if re.match("openjre*", packageName) is not None or re.match(
                 "openjdk*", packageName
@@ -239,7 +233,7 @@ class ToolChainUtils(object):
                     f"Unable to find rpm {package} in current and previous versions"  # noqa: E501
                 )
                 raise Exception("Input Error")
-            rpmFiles += " " + rpmFile.replace(path, sandboxPath)
+            rpmFiles += f" {rpmFile.replace(path, sandboxPath)}"
             packages += f" {package}"
 
         self.logger.debug(f"Installing custom rpms: {packages}")

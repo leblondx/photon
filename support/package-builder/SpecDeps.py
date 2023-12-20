@@ -125,14 +125,15 @@ class SpecDependencyGenerator(object):
     def displayDependencies(
         self, displayOption, inputType, inputValue, allDeps, parent
     ):
-        children = {}
-        sortedList = []
-        for elem in sorted(
-            allDeps.items(), key=operator.itemgetter(1), reverse=True
-        ):
-            sortedList.append(elem[0])
+        sortedList = [
+            elem[0]
+            for elem in sorted(
+                allDeps.items(), key=operator.itemgetter(1), reverse=True
+            )
+        ]
         # construct all children nodes
         if displayOption == "tree":
+            children = {}
             for k, v in parent.items():
                 children.setdefault(v, []).append(k)
             if inputType == "json":
@@ -145,21 +146,18 @@ class SpecDependencyGenerator(object):
                     self.printTree(children, child, 1)
                 self.logger.info(
                     "*" * 18
-                    + " {} ".format(len(sortedList))
+                    + f" {len(sortedList)} "
                     + "packages in total "
                     + "*" * 18
                 )
-            else:
-                if inputType == "pkg" and len(children) > 0:
-                    self.logger.info(
-                        "cyclic dependency detected, mappings: \n", children
-                    )
+            elif inputType == "pkg" and children:
+                self.logger.info(
+                    "cyclic dependency detected, mappings: \n", children
+                )
 
-        # To display a flat list of all packages
         elif displayOption == "list":
             self.logger.info(sortedList)
 
-        # To generate a new JSON file based on given input json file
         elif displayOption == "json" and inputType == "json":
             d = {"packages": sortedList}
             with open(inputValue, "w") as outfile:
@@ -207,13 +205,13 @@ class SpecDependencyGenerator(object):
     def process(self, inputType, inputValue, displayOption, outputFile=None):
         whoNeedsList = []
         inputPackages = []
-        mapDependencies = {}
-        parent = {}
-        if inputType == "pkg" or inputType == "json":
+        if inputType in ["pkg", "json"]:
             if inputType == "pkg":
                 inputPackages.append(inputValue)
             else:
                 inputPackages = self.getAllPackageNames(inputValue)
+            mapDependencies = {}
+            parent = {}
             self.calculateSpecDependency(
                 inputPackages, mapDependencies, parent
             )
@@ -246,9 +244,7 @@ class SpecDependencyGenerator(object):
 
         elif inputType == "who-needs":
             for depPackage in SPECS.getData().mapPackageToSpec:
-                pkg = f"{inputValue}-" + SPECS.getData().getHighestVersion(
-                    inputValue
-                )
+                pkg = f"{inputValue}-{SPECS.getData().getHighestVersion(inputValue)}"
                 for version in SPECS.getData().getVersions(depPackage):
                     depPkg = f"{depPackage}-{version}"
                     self.logger.info(depPkg)
@@ -258,9 +254,7 @@ class SpecDependencyGenerator(object):
             return whoNeedsList
 
         elif inputType == "all-requires":
-            pkg = f"{inputValue}-" + SPECS.getData().getHighestVersion(
-                inputValue
-            )
+            pkg = f"{inputValue}-{SPECS.getData().getHighestVersion(inputValue)}"
             requires = SPECS.getData().getRequiresTreeOfBasePkgsForPkg(pkg)
             requires.sort()
             self.logger.info(requires)
@@ -340,12 +334,7 @@ def main():
                 "get-upward-deps", options.pkg, options.display_option
             )
             logger.info(f"Upward dependencies: {whoNeedsList}")
-        # To display/print package dependencies on console
-        elif (
-            options.input_type == "pkg"
-            or options.input_type == "who-needs"
-            or options.input_type == "all-requires"
-        ):
+        elif options.input_type in ["pkg", "who-needs", "all-requires"]:
             specDeps.process(
                 options.input_type, options.pkg, options.display_option
             )

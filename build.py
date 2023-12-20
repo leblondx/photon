@@ -263,14 +263,14 @@ class Utilities:
             "who_needs",
             "print_upward_deps",
         ]:
-            if "pkg" not in os.environ:
-                if not args or len(args) != 1:
-                    raise Exception(
-                        "Please provide package name as a parameter or as an environment variable pkg=<pkg-name>"
-                    )
-                self.pkg = args[0]
-            else:
+            if "pkg" in os.environ:
                 self.pkg = os.environ["pkg"]
+            elif not args or len(args) != 1:
+                raise Exception(
+                    "Please provide package name as a parameter or as an environment variable pkg=<pkg-name>"
+                )
+            else:
+                self.pkg = args[0]
             self.display_option = "tree"
 
         if configdict["targetName"] == "imgtree" and "img" not in os.environ:
@@ -343,7 +343,7 @@ class Utilities:
         whoNeedsList = self.specDepsObject.process(
             "get-upward-deps", self.pkg, self.display_option
         )
-        self.logger.info("Upward dependencies: " + str(whoNeedsList))
+        self.logger.info(f"Upward dependencies: {str(whoNeedsList)}")
 
     def pull_stage_rpms(self):
         if not self.args or len(self.args) != 1:
@@ -364,17 +364,17 @@ class Utilities:
                 self.logger.info("Not found")
                 notFound.append(f)
         if notFound:
-            self.logger.info("List of missing files: " + str(notFound))
+            self.logger.info(f"List of missing files: {notFound}")
 
     def clean_stage_rpms(self):
         keepFiles = self.specDepsObject.listRPMfilenames(True)
         rpmpath = os.path.join(constants.rpmPath, constants.currentArch)
 
-        allFiles = []
-        for f in os.listdir(rpmpath):
-            if os.path.isfile(f"{rpmpath}/{f}"):
-                allFiles.append(f"{constants.currentArch}/{f}")
-
+        allFiles = [
+            f"{constants.currentArch}/{f}"
+            for f in os.listdir(rpmpath)
+            if os.path.isfile(f"{rpmpath}/{f}")
+        ]
         rpmpath = f"{constants.rpmPath}/noarch"
         for f in os.listdir(rpmpath):
             if os.path.isfile(f"{rpmpath}/{f}"):
@@ -383,7 +383,7 @@ class Utilities:
         removeFiles = list(set(allFiles) - set(keepFiles))
         for f in removeFiles:
             filePath = os.path.join(constants.rpmPath, f)
-            print("Removing {}".format(f))
+            print(f"Removing {f}")
             try:
                 os.remove(filePath)
             except Exception as error:
@@ -569,27 +569,22 @@ class CleanUp:
             cmd = f"{photonDir}/support/package-builder/clean-up-chroot.py {constants.buildRootPath}"
             runBashCmd(cmd)
 
-    def removeUpwardDeps(pkg, display_option):
+    def removeUpwardDeps(self, display_option):
         specDeps = SpecDependencyGenerator(
             constants.logPath, constants.logLevel
         )
-        isToolChainPkg = specDeps.process(
-            "is-toolchain-pkg", pkg, display_option
-        )
-        if isToolChainPkg:
+        if isToolChainPkg := specDeps.process(
+            "is-toolchain-pkg", self, display_option
+        ):
             specDeps.logger.info(
                 "Removing all staged RPMs since toolchain packages were modified"
             )
             runBashCmd(f"rm -rf {constants.rpmPath}")
         else:
-            whoNeedsList = specDeps.process(
-                "get-upward-deps", pkg, display_option
-            )
-            specDeps.logger.info(
-                "Removing upward dependencies: " + str(whoNeedsList)
-            )
-            for pkg in whoNeedsList:
-                package, version = StringUtils.splitPackageNameAndVersion(pkg)
+            whoNeedsList = specDeps.process("get-upward-deps", self, display_option)
+            specDeps.logger.info(f"Removing upward dependencies: {str(whoNeedsList)}")
+            for self in whoNeedsList:
+                package, version = StringUtils.splitPackageNameAndVersion(self)
                 release = SPECS.getData().getRelease(package, version)
                 for p in SPECS.getData().getPackages(package, version):
                     buildarch = SPECS.getData().getBuildArch(p, version)
@@ -1062,10 +1057,9 @@ class CheckTools:
         cmd = f"{photonDir}/tools/scripts/get_modified_files.sh"
 
         if "base-commit" in configdict["photon-build-param"]:
-            commit_id = str(
+            if commit_id := str(
                 configdict["photon-build-param"].get("base-commit")
-            )
-            if commit_id:
+            ):
                 cmd = f"git diff --name-only {commit_id}"
 
         files, _, _ = runBashCmd(cmd, capture=True)
@@ -1402,11 +1396,11 @@ def initialize_constants():
     if not url_validator(src_url) and os.path.exists(src_url):
         # TODO: can be removed in future
         constants.setPullSourcesURL(Builder.get_baseurl(src_url))
-    else:
-        if not url_validator(src_url):
-            raise Exception(f"Invalid pull-sources-config url {src_url}")
+    elif url_validator(src_url):
         constants.setPullSourcesURL(src_url)
 
+    else:
+        raise Exception(f"Invalid pull-sources-config url {src_url}")
     src_url = configdict["photon-build-param"].get("publishrpm-url", "")
     if not url_validator(src_url):
         raise Exception(f"publishrpm-url is invalid {src_url}")
@@ -1633,8 +1627,7 @@ def process_additional_cfgs(cfgdict_additional_path):
 
     for k, v in env_additional_cfg_map.items():
         if k in os.environ:
-            val = os.environ[k]
-            if val:
+            if val := os.environ[k]:
                 cfgdict_additional_path[v] = os.environ[k]
 
 

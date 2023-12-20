@@ -51,14 +51,14 @@ class Package(object):
             self.distribution = basePkg.distribution
 
     def updatePackageMacro(self, macro):
-        if macro.macroName == "%post":
-            self.postMacro = macro
-        if macro.macroName == "%postun":
-            self.postunMacro = macro
-        if macro.macroName == "%files":
-            self.filesMacro = macro
         if macro.macroName == "%description":
             self.descriptionMacro = macro
+        elif macro.macroName == "%files":
+            self.filesMacro = macro
+        elif macro.macroName == "%post":
+            self.postMacro = macro
+        elif macro.macroName == "%postun":
+            self.postunMacro = macro
 
 
 class SpecObject(object):

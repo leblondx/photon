@@ -64,10 +64,7 @@ class PackageUtils(object):
         else:
             rpmDestFile = f"{constants.topDirPath}/RPMS/"
 
-        if "noarch" in rpmfile:
-            rpmDestFile += "noarch/"
-        else:
-            rpmDestFile += f"{arch}/"
+        rpmDestFile += "noarch/" if "noarch" in rpmfile else f"{arch}/"
         rpmDestFile += rpmName
 
         if noDeps:
@@ -111,7 +108,7 @@ class PackageUtils(object):
         listSourcesFiles = SPECS.getData().getSources(package, version)
         listPatchFiles = SPECS.getData().getPatches(package, version)
         specFile = SPECS.getData().getSpecFile(package, version)
-        specName = SPECS.getData().getSpecName(package) + ".spec"
+        specName = f"{SPECS.getData().getSpecName(package)}.spec"
         sourcePath = f"{constants.topDirPath}/SOURCES/"
         specPath = f"{constants.topDirPath}/SPECS/"
         if (
@@ -125,10 +122,8 @@ class PackageUtils(object):
         sandbox.put(specFile, specPath + specName)
 
         sources_urls, macros = self._getAdditionalBuildOptions(package)
-        self.logger.debug(f"Extra macros for {package}: " + str(macros))
-        self.logger.debug(
-            f"Extra source URLs for {package}: " + str(sources_urls)
-        )
+        self.logger.debug(f"Extra macros for {package}: {str(macros)}")
+        self.logger.debug(f"Extra source URLs for {package}: {str(sources_urls)}")
         constants.setExtraSourcesURLs(package, sources_urls)
 
         self._copySources(
@@ -249,9 +244,7 @@ class PackageUtils(object):
         filename = f"{package}-{version}-{release}.src.rpm"
 
         fullpath = f"{constants.sourceRpmPath}/{filename}"
-        if os.path.isfile(fullpath):
-            return fullpath
-        return None
+        return fullpath if os.path.isfile(fullpath) else None
 
     def findDebugRPMFile(self, package, version="*", arch=None):
         if not arch:
@@ -263,9 +256,7 @@ class PackageUtils(object):
         filename = f"{package}-debuginfo-{version}-{release}.{arch}.rpm"
 
         fullpath = f"{constants.rpmPath}/{arch}/{filename}"
-        if os.path.isfile(fullpath):
-            return fullpath
-        return None
+        return fullpath if os.path.isfile(fullpath) else None
 
     def findInstalledRPMPackages(self, sandbox, arch):
         rpms = None
@@ -282,9 +273,7 @@ class PackageUtils(object):
 
     def adjustGCCSpecs(self, sandbox, package, version):
         # TODO: need to harden cross compiller also
-        opt = " " + SPECS.getData().getSecurityHardeningOption(
-            package, version
-        )
+        opt = f" {SPECS.getData().getSecurityHardeningOption(package, version)}"
         sandbox.put(
             os.path.join(os.path.dirname(__file__), self.adjustGCCSpecScript),
             "/tmp",
@@ -332,11 +321,10 @@ class PackageUtils(object):
                     msg += f"Cannot find sources for package: {package}"
                 self.logger.error(msg)
                 raise Exception(msg)
-        else:
-            if checksum is None:
-                msg = f"No checksum found for {source}"
-                self.logger.error(msg)
-                raise Exception(msg)
+        elif checksum is None:
+            msg = f"No checksum found for {source}"
+            self.logger.error(msg)
+            raise Exception(msg)
         if len(sourcePath) > 1:
             self.logger.error(
                 f"Multiple sources found for source: {source}\n"
