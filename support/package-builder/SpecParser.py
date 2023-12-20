@@ -30,8 +30,7 @@ class SpecParser(object):
         self.packages = {}
         self.specAdditionalContent = ""
         self.globalSecurityHardening = ""
-        self.defs = {}
-        self.defs["_arch"] = arch
+        self.defs = {"_arch": arch}
         self.conditionalCheckMacroEnabled = False
         self.macro_pattern = re.compile(r"%{(\S+?)\}")
         self.specfile = specfile
@@ -142,9 +141,7 @@ class SpecParser(object):
             else:
                 pkgName = f"{basePkgName}-{pkgHeaderName[i]}"
                 break
-        if not pkgName:
-            return True, basePkgName
-        return True, pkgName
+        return (True, basePkgName) if not pkgName else (True, pkgName)
 
     def _replaceMacros(self, string):
         """
@@ -206,10 +203,7 @@ class SpecParser(object):
                 retv = ""
                 if _test_conditional(macro_name):
                     if _is_macro_defined(parts[0]):
-                        if len(parts) == 2:
-                            retv = parts[1]
-                        else:
-                            retv = _get_macro(parts[0])
+                        retv = parts[1] if len(parts) == 2 else _get_macro(parts[0])
                 else:
                     if not _is_macro_defined(parts[0]):
                         if len(parts) == 2:
@@ -260,18 +254,18 @@ class SpecParser(object):
         return macro, endPos
 
     def _updateSpecMacro(self, macro):
-        if macro.macroName == "%clean":
-            self.cleanMacro = macro
-        if macro.macroName == "%prep":
-            self.prepMacro = macro
         if macro.macroName == "%build":
             self.buildMacro = macro
-        if macro.macroName == "%install":
-            self.installMacro = macro
-        if macro.macroName == "%changelog":
+        elif macro.macroName == "%changelog":
             self.changelogMacro = macro
-        if macro.macroName == "%check":
+        elif macro.macroName == "%check":
             self.checkMacro = macro
+        elif macro.macroName == "%clean":
+            self.cleanMacro = macro
+        elif macro.macroName == "%install":
+            self.installMacro = macro
+        elif macro.macroName == "%prep":
+            self.prepMacro = macro
 
     def _isMacro(self, line):
         return (
@@ -316,9 +310,7 @@ class SpecParser(object):
             "^buildprovides:",
             "^buildarch:",
         ]
-        return any(
-            [re.search(r, line, flags=re.IGNORECASE) for r in headersPatterns]
-        )
+        return any(re.search(r, line, flags=re.IGNORECASE) for r in headersPatterns)
 
     def _isGlobalSecurityHardening(self, line):
         return re.search(
@@ -346,9 +338,7 @@ class SpecParser(object):
 
     def _readConditionalArch(self, line):
         w = line.split()
-        if len(w) == 2:
-            return w[1]
-        return None
+        return w[1] if len(w) == 2 else None
 
     def _readDefinition(self, line):
         listDefines = line.split()
@@ -362,7 +352,7 @@ class SpecParser(object):
         if headerSplitIndex + 1 == len(line):
             print(line, "\nError:Invalid header")
             return False, None, None
-        headerName = line[0:headerSplitIndex].lower()
+        headerName = line[:headerSplitIndex].lower()
         headerContent = line[headerSplitIndex + 1 :].strip()  # noqa: E203
         return True, headerName, headerContent
 
@@ -554,9 +544,7 @@ class SpecParser(object):
         words = data.split()
         if len(words) != 2:
             return False
-        if words[0] != "%if" or "with_check" not in words[1]:
-            return False
-        return True
+        return words[0] == "%if" and "with_check" in words[1]
 
     def _isIfCondition(self, line):
         return line.startswith("%if ")
@@ -632,10 +620,7 @@ class SpecParser(object):
         return dependentPackages
 
     def _getPackageNames(self):
-        packageNames = []
-        for pkg in self.packages.values():
-            packageNames.append(pkg.name)
-        return packageNames
+        return [pkg.name for pkg in self.packages.values()]
 
     def _getSourceNames(self):
         sourceNames = []

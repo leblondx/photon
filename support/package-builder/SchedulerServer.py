@@ -27,9 +27,7 @@ def shutdownServer():
 
 
 def buildCompleted():
-    if not Scheduler.isAnyPackagesCurrentlyBuilding():
-        return True
-    return False
+    return not Scheduler.isAnyPackagesCurrentlyBuilding()
 
 
 @app.route("/package/", methods=["GET"])
@@ -64,10 +62,10 @@ def notifyPackageBuildCompleted():
 
     if flask.request.json["status"] == 0:
         Scheduler.notifyPackageBuildCompleted(flask.request.json["package"])
-        logger.info("Build Success %s" % flask.request.json["package"])
+        logger.info(f'Build Success {flask.request.json["package"]}')
     elif flask.request.json["status"] == -1:
         Scheduler.notifyPackageBuildFailed(flask.request.json["package"])
-        logger.info("Build Failed %s" % flask.request.json["package"])
+        logger.info(f'Build Failed {flask.request.json["package"]}')
     else:
         return {"message", "wrong status"}, NOT_ACCEPTABLE
     logger.disabled = True
@@ -87,38 +85,36 @@ def getMapPackageToCycle():
 
 @app.route("/constants/", methods=["GET"])
 def getConstants():
-    constant_dict = {}
-    constant_dict["specPath"] = constants.specPath
-    constant_dict["sourcePath"] = constants.sourcePath
-    constant_dict["rpmPath"] = constants.rpmPath
-    constant_dict["sourceRpmPath"] = constants.sourceRpmPath
-    constant_dict["topDirPath"] = constants.topDirPath
-    constant_dict["logPath"] = constants.logPath
-    constant_dict["logLevel"] = constants.logLevel
-    constant_dict["dist"] = constants.dist
-    constant_dict["buildNumber"] = constants.buildNumber
-    constant_dict["releaseVersion"] = constants.releaseVersion
-    constant_dict["prevPublishRPMRepo"] = constants.prevPublishRPMRepo
-    constant_dict["prevPublishXRPMRepo"] = constants.prevPublishXRPMRepo
-    constant_dict["buildRootPath"] = constants.buildRootPath
-    constant_dict["pullsourcesURL"] = constants.pullsourcesURL
-    constant_dict["extrasourcesURLs"] = constants.extrasourcesURLs
-    constant_dict["buildPatch"] = constants.buildPatch
-    constant_dict["inputRPMSPath"] = constants.inputRPMSPath
-    constant_dict["rpmCheck"] = constants.rpmCheck
-    constant_dict["rpmCheckStopOnError"] = constants.rpmCheckStopOnError
-    constant_dict[
-        "publishBuildDependencies"
-    ] = constants.publishBuildDependencies
-    constant_dict["packageWeightsPath"] = constants.packageWeightsPath
-    constant_dict["userDefinedMacros"] = constants.userDefinedMacros
-    constant_dict["katBuild"] = constants.katBuild
-    constant_dict["canisterBuild"] = constants.canisterBuild
-    constant_dict['acvpBuild'] = constants.acvpBuild
-    constant_dict["tmpDirPath"] = constants.tmpDirPath
-    constant_dict["buildArch"] = constants.buildArch
-    constant_dict["currentArch"] = constants.currentArch
-
+    constant_dict = {
+        "specPath": constants.specPath,
+        "sourcePath": constants.sourcePath,
+        "rpmPath": constants.rpmPath,
+        "sourceRpmPath": constants.sourceRpmPath,
+        "topDirPath": constants.topDirPath,
+        "logPath": constants.logPath,
+        "logLevel": constants.logLevel,
+        "dist": constants.dist,
+        "buildNumber": constants.buildNumber,
+        "releaseVersion": constants.releaseVersion,
+        "prevPublishRPMRepo": constants.prevPublishRPMRepo,
+        "prevPublishXRPMRepo": constants.prevPublishXRPMRepo,
+        "buildRootPath": constants.buildRootPath,
+        "pullsourcesURL": constants.pullsourcesURL,
+        "extrasourcesURLs": constants.extrasourcesURLs,
+        "buildPatch": constants.buildPatch,
+        "inputRPMSPath": constants.inputRPMSPath,
+        "rpmCheck": constants.rpmCheck,
+        "rpmCheckStopOnError": constants.rpmCheckStopOnError,
+        "publishBuildDependencies": constants.publishBuildDependencies,
+        "packageWeightsPath": constants.packageWeightsPath,
+        "userDefinedMacros": constants.userDefinedMacros,
+        "katBuild": constants.katBuild,
+        "canisterBuild": constants.canisterBuild,
+        'acvpBuild': constants.acvpBuild,
+        "tmpDirPath": constants.tmpDirPath,
+        "buildArch": constants.buildArch,
+        "currentArch": constants.currentArch,
+    }
     return constant_dict, SUCCESS
 
 

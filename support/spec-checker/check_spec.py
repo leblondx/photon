@@ -20,7 +20,7 @@ cfg_fn = "check-spec-cfg.json"
 source_regex = re.compile(r"^(Source\d*\s*):\s*(.+)", re.IGNORECASE)
 patch_regex = re.compile(r"^([#]*Patch\d*\s*):\s*(\S+)", re.IGNORECASE)
 
-with open(os.path.dirname(os.path.realpath(__file__)) + f"/{cfg_fn}", "r") as f:
+with open(f"{os.path.dirname(os.path.realpath(__file__))}/{cfg_fn}", "r") as f:
     cfg_dict = json.load(f)
 
 g_ignore_list = []
@@ -108,7 +108,7 @@ def check_spec_header(spec, err_dict):
 
         if not val:
             err_msg = f"{key} must be present in the spec header"
-        elif key == "Distribution" and val and val != "Photon":
+        elif key == "Distribution" and val != "Photon":
             err_msg = f"{key} name must be Photon (Given: {val})"
         elif key == "Vendor" and spec.vendor and spec.vendor != "VMware, Inc.":
             err_msg = f"{key} name must be VMware, Inc. (Given: {val})"
@@ -123,8 +123,6 @@ def check_spec_header(spec, err_dict):
 # check for version in spec header against latest changelog entry
 def check_for_version(spec, err_dict):
     ret = False
-    sec = "version_check"
-
     clog = spec.changelog.splitlines()
     changelog_ver = clog[0].split()[-1]
 
@@ -132,10 +130,9 @@ def check_for_version(spec, err_dict):
     release_ver = f"{spec.version}-" + spec.release.split("%")[0]
 
     if changelog_ver != release_ver:
-        err_msg = ("Changelog & Release version mismatch " "%s != %s") % (
-            changelog_ver,
-            release_ver,
-        )
+        err_msg = f"Changelog & Release version mismatch {changelog_ver} != {release_ver}"
+        sec = "version_check"
+
         err_dict.update_err_dict(sec, err_msg)
         ret = True
 
@@ -144,10 +141,10 @@ def check_for_version(spec, err_dict):
 
 def check_for_dist_tag(spec, err_dict):
     ret = False
-    sec = "dist_tag"
-
     if "%{?dist}" not in spec.release:
         err_msg = "%%{?dist} tag not found in Release: %s" % (spec.release)
+        sec = "dist_tag"
+
         err_dict.update_err_dict(sec, err_msg)
         ret = True
 
@@ -208,7 +205,7 @@ def check_for_unallowed_usages(spec_fn, err_dict):
             key_found = False
 
         if key_found:
-            ret_dict.update({line_num: line})
+            ret_dict[line_num] = line
 
     return ret, ret_dict
 
@@ -216,11 +213,11 @@ def check_for_unallowed_usages(spec_fn, err_dict):
 # check against weekday abbreviation for the given date in changelog
 def check_for_bogus_date(line, cur_date, err_dict):
     ret = False
-    sec = "bogus_date"
-
     day_abbr = calendar.day_abbr[cur_date.weekday()]
     if day_abbr != line[1]:
         err_msg = f"bogus date found at:\n{line}"
+        sec = "bogus_date"
+
         err_dict.update_err_dict(sec, err_msg)
         ret = True
 
@@ -314,9 +311,7 @@ def check_sub_pkg(spec, err_dict):
 
             subpkg_hdr = [pkg.name, pkg.summary, pkg.description]
             if "" in subpkg_hdr or None in subpkg_hdr:
-                err_msg += (
-                    "One of Name/Summary/Description is missing in sub" " package %s"
-                ) % (pkg)
+                err_msg += f"One of Name/Summary/Description is missing in sub package {pkg}"
 
             if err_msg:
                 ret = True
@@ -618,9 +613,8 @@ def create_altered_spec(spec_fn):
         g_ignore_list.append(included_fn)
         included_fn = find_file_in_dir(included_fn, dirname)
         with open(included_fn, "r") as fp:
-            for l in fp.readlines():
-                l = l.strip()
-                if l:
+            for l in fp:
+                if l := l.strip():
                     output.append(f"{l}\n")
 
     altered_spec = f"/tmp/{os.path.basename(spec_fn)}"
@@ -685,9 +679,7 @@ if __name__ == "__main__":
     def get_specs_in_dir(dirname):
         files = []
         for r, d, fns in os.walk(dirname):
-            for fn in fns:
-                if fn.endswith(".spec"):
-                    files.append(os.path.join(r, fn))
+            files.extend(os.path.join(r, fn) for fn in fns if fn.endswith(".spec"))
         return files
 
     arglen = len(sys.argv)

@@ -12,23 +12,16 @@ from PackageInfo import PackageInfo
 
 
 class Builder:
-    def buildSpecifiedPackages(
-        listPackages,
-        buildThreads,
-        pkgBuildType,
-        pkgInfoJsonFile=None,
-        logger=None,
-        build_extra_pkgs=False,
-    ):
+    def buildSpecifiedPackages(self, buildThreads, pkgBuildType, pkgInfoJsonFile=None, logger=None, build_extra_pkgs=False):
         if constants.rpmCheck:
-            constants.setTestForceRPMS(copy.copy(listPackages))
+            constants.setTestForceRPMS(copy.copy(self))
 
         pkgManager = PackageManager(pkgBuildType=pkgBuildType)
 
         if not build_extra_pkgs:
-            listPackages = set(listPackages) - set(constants.extraPackagesList)
+            self = set(self) - set(constants.extraPackagesList)
 
-        pkgManager.buildPackages(listPackages, buildThreads)
+        pkgManager.buildPackages(self, buildThreads)
 
         if pkgInfoJsonFile:
             # Generating package info file which is required by installer
@@ -40,11 +33,9 @@ class Builder:
             pkgInfo.loadPackagesData()
             pkgInfo.writePkgListToFile(pkgInfoJsonFile)
 
-    def buildPackagesInJson(
-        pkgJsonInput, buildThreads, pkgBuildType, pkgInfoJsonFile, logger
-    ):
+    def buildPackagesInJson(self, buildThreads, pkgBuildType, pkgInfoJsonFile, logger):
         listPackages = []
-        with open(pkgJsonInput) as jsonData:
+        with open(self) as jsonData:
             pkg_list_json = json.load(jsonData)
             listPackages = pkg_list_json["packages"]
             archSpecificPkgs = f"packages_{constants.buildArch}"
@@ -55,32 +46,30 @@ class Builder:
             listPackages, buildThreads, pkgBuildType, pkgInfoJsonFile, logger
         )
 
-    def buildPackagesForAllSpecs(
-            buildThreads, pkgBuildType, pkgInfoJsonFile, logger
-    ):
+    def buildPackagesForAllSpecs(self, pkgBuildType, pkgInfoJsonFile, logger):
         listPackages = SPECS.getData().getListPackages()
         Builder.buildSpecifiedPackages(
-            listPackages, buildThreads, pkgBuildType, pkgInfoJsonFile, logger
+            listPackages, self, pkgBuildType, pkgInfoJsonFile, logger
         )
 
-    def get_packages_with_build_options(pkg_build_options_file):
-        if os.path.exists(pkg_build_options_file):
-            with open(pkg_build_options_file) as jsonData:
+    def get_packages_with_build_options(self):
+        if os.path.exists(self):
+            with open(self) as jsonData:
                 pkg_build_option_json = json.load(
                     jsonData, object_pairs_hook=collections.OrderedDict
                 )
                 constants.setBuildOptions(pkg_build_option_json)
 
-    def get_baseurl(conf_file):
-        with open(conf_file) as jsonFile:
+    def get_baseurl(self):
+        with open(self) as jsonFile:
             config = json.load(jsonFile)
         return config["baseurl"]
 
-    def get_all_package_names(build_install_option):
-        base_path = os.path.dirname(build_install_option)
+    def get_all_package_names(self):
+        base_path = os.path.dirname(self)
         packages = []
 
-        with open(build_install_option) as jsonData:
+        with open(self) as jsonData:
             option_list_json = json.load(
                 jsonData, object_pairs_hook=collections.OrderedDict
             )

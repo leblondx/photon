@@ -9,8 +9,7 @@ from SpecData import SPECS
 
 
 def removeDuplicateEntries(myList):
-    myListCopy = list(OrderedDict.fromkeys(myList))
-    return myListCopy
+    return list(OrderedDict.fromkeys(myList))
 
 
 class PackageBuildDataGenerator(object):
@@ -31,10 +30,7 @@ class PackageBuildDataGenerator(object):
         self.__sortedBuildDependencyGraph = {}
 
     def getPackageBuildData(self, listPackages):
-        basePackages = []
-        for pkg in listPackages:
-            basePackages.append(SPECS.getData().getBasePkg(pkg))
-
+        basePackages = [SPECS.getData().getBasePkg(pkg) for pkg in listPackages]
         self._readDependencyGraphAndCyclesForGivenPackages(basePackages)
         self._getSortedBuildOrderList()
         return (
@@ -130,21 +126,17 @@ class PackageBuildDataGenerator(object):
         self.__sortedPackageList = sortedList
 
     def _constructBuildAndRunTimeDependencyGraph(self, basePackage):
-        addBuildTimeGraph = True
-        addRunTimeGraph = True
-        if basePackage in self.__buildDependencyGraph:
-            addBuildTimeGraph = False
-        if basePackage in self.__runTimeDependencyGraph:
-            addRunTimeGraph = False
-
+        addBuildTimeGraph = basePackage not in self.__buildDependencyGraph
+        addRunTimeGraph = basePackage not in self.__runTimeDependencyGraph
         nextPackagesToConstructGraph = set()
         if addBuildTimeGraph:
             dependentRpmPackages = SPECS.getData().getBuildRequiresForPkg(
                 basePackage
             )
-            dependentPackages = set()
-            for dependentPkg in dependentRpmPackages:
-                dependentPackages.add(SPECS.getData().getBasePkg(dependentPkg))
+            dependentPackages = {
+                SPECS.getData().getBasePkg(dependentPkg)
+                for dependentPkg in dependentRpmPackages
+            }
             self.__buildDependencyGraph[basePackage] = dependentPackages
             nextPackagesToConstructGraph.update(dependentPackages)
 
@@ -193,8 +185,7 @@ class PackageBuildDataGenerator(object):
         if package is None:
             dependentPackages = copy.deepcopy(dependencyGraph)
         else:
-            depPkgs = set()
-            depPkgs.add(package)
+            depPkgs = {package}
             while depPkgs:
                 pkg = depPkgs.pop()
                 if pkg in dependentPackages:
@@ -219,8 +210,6 @@ class PackageBuildDataGenerator(object):
     @staticmethod
     def _topologicalSortPackages(dependencyGraph, package=None):
         sortedPackageList = []
-        noDepPackages = set()
-
         dependentPackages = PackageBuildDataGenerator._buildDependentPackages(
             dependencyGraph, package
         )
@@ -234,10 +223,9 @@ class PackageBuildDataGenerator(object):
         Find packages with no dependencies and generate
         dependentof_package edge list
         """
-        for pkg in dependentPackages:
-            if not dependentPackages[pkg]:
-                noDepPackages.add(pkg)
-
+        noDepPackages = {
+            pkg for pkg in dependentPackages if not dependentPackages[pkg]
+        }
         while noDepPackages:
             pkg = noDepPackages.pop()
             sortedPackageList.append(pkg)
@@ -248,12 +236,11 @@ class PackageBuildDataGenerator(object):
                     if not dependentPackages[childPkg]:
                         noDepPackages.add(childPkg)
 
-        # creating circular dependency graph for given dependency graph
-        circularDependencyGraph = {}
-        for pkg in dependentPackages.keys():
-            if dependentPackages[pkg]:
-                circularDependencyGraph[pkg] = dependentPackages[pkg]
-
+        circularDependencyGraph = {
+            pkg: dependentPackages[pkg]
+            for pkg in dependentPackages.keys()
+            if dependentPackages[pkg]
+        }
         """
         return (non-circular dependent package in sorted order and
         circular dependent package list in a dependencyGraph)
@@ -266,8 +253,7 @@ class PackageBuildDataGenerator(object):
         )
         constructDependencyMap = {}
         for node in cyclicDependencyGraph.keys():
-            tmpDepNodeList = set()
-            tmpDepNodeList.add(node)
+            tmpDepNodeList = {node}
             depNodeList = []
 
             while tmpDepNodeList:
@@ -302,9 +288,9 @@ class PackageBuildDataGenerator(object):
         )
         cycleCount = 0
         for node in cyclicDependencyGraph.keys():
-            listDepPkg = constructDependencyMap[node]
-            cycPkgs = []
             if node not in self.__mapPackageToCycle:
+                listDepPkg = constructDependencyMap[node]
+                cycPkgs = []
                 for depPkg in listDepPkg:
                     x = constructDependencyMap[depPkg]
                     if node in x:
@@ -312,9 +298,7 @@ class PackageBuildDataGenerator(object):
 
                 if cycPkgs:
                     cycPkgs.append(node)
-                    cycleName = "cycle" + str(
-                        PackageBuildDataGenerator.cycleCount
-                    )
+                    cycleName = f"cycle{str(PackageBuildDataGenerator.cycleCount)}"
                     PackageBuildDataGenerator.cycleCount += 1
                     for x in cycPkgs:
                         self.__mapPackageToCycle[x] = cycleName

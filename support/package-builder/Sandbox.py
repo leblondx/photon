@@ -203,8 +203,7 @@ class Container(Sandbox):
 
         containerName = containerName.replace("+", "p")
         try:
-            oldContainerID = self.dockerClient.containers.get(containerName)
-            if oldContainerID:
+            if oldContainerID := self.dockerClient.containers.get(containerName):
                 oldContainerID.remove(force=True)
         except docker.errors.NotFound:
             try:

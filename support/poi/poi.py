@@ -262,10 +262,7 @@ class Poi(object):
         if os.path.isfile(pkg_info_json):
             print("using pkg_info.json for RPM list")
 
-            key = 'rpm'
-            if type in ["source", "debug"]:
-                key = f'{type}rpm'
-
+            key = f'{type}rpm' if type in ["source", "debug"] else 'rpm'
             with open(pkg_info_json, "rt") as f:
                 pkg_info = json.load(f)
 
@@ -276,12 +273,11 @@ class Poi(object):
         else:
             print("pkg_info.json not found, shipping all RPMs")
             for arch in ["noarch", self.arch]:
-                for p in glob.glob(os.path.join(repo_dir, arch, "*.rpm")):
-                    if ("-debuginfo-" in p) == (type == "debug"):
-                        # replace leading directory path with path as seen
-                        # in container
-                        rpm_list.append(p.replace(repo_dir.rstrip("/"), "/repo"))
-
+                rpm_list.extend(
+                    p.replace(repo_dir.rstrip("/"), "/repo")
+                    for p in glob.glob(os.path.join(repo_dir, arch, "*.rpm"))
+                    if ("-debuginfo-" in p) == (type == "debug")
+                )
         if type is None:
             rpm_list_file = os.path.join(stage_cfg_dir, f"{basename}.rpm-list")
         else:

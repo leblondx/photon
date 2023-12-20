@@ -186,28 +186,28 @@ from ansible.module_utils.basic import AnsibleModule
 def prep_tdnf_cmd(cmd, p_dict):
     """Prepare tdnf command based on given configs"""
     if p_dict["excludelist"]:
-        cmd = "%s --exclude %s" % (cmd, ",".join(p_dict["excludelist"]))
+        cmd = f'{cmd} --exclude {",".join(p_dict["excludelist"])}'
 
     if p_dict["disable_gpg_check"]:
-        cmd = "%s --nogpgcheck" % cmd
+        cmd = f"{cmd} --nogpgcheck"
 
     if p_dict["releasever"]:
-        cmd = "%s --releasever %s" % (cmd, p_dict["releasever"])
+        cmd = f'{cmd} --releasever {p_dict["releasever"]}'
 
     if p_dict["conf_file"]:
-        cmd = "%s -c %s" % (cmd, p_dict["conf_file"])
+        cmd = f'{cmd} -c {p_dict["conf_file"]}'
 
     if p_dict["installroot"] != "/":
-        cmd = "%s --installroot %s" % (cmd, p_dict["installroot"])
+        cmd = f'{cmd} --installroot {p_dict["installroot"]}'
 
     for repo in p_dict["enablerepolist"]:
-        cmd = "%s --enablerepo=%s" % (cmd, repo)
+        cmd = f"{cmd} --enablerepo={repo}"
 
     for repo in p_dict["disablerepolist"]:
-        cmd = "%s --disablerepo=%s" % (cmd, repo)
+        cmd = f"{cmd} --disablerepo={repo}"
 
     if p_dict["security_severity"]:
-        cmd = "%s --sec-severity %s" % (cmd, p_dict["security_severity"])
+        cmd = f'{cmd} --sec-severity {p_dict["security_severity"]}'
 
     return cmd
 
@@ -230,7 +230,7 @@ def exec_cmd(module, params):
 
 def update_package_db(module, get_out, p_dict):
     """Update tdnf cache metadata"""
-    cmd = "%s makecache --refresh -q" % (p_dict["tdnf"])
+    cmd = f'{p_dict["tdnf"]} makecache --refresh -q'
     cmd = prep_tdnf_cmd(cmd, p_dict)
 
     params = {
@@ -244,7 +244,7 @@ def update_package_db(module, get_out, p_dict):
 
 def upgrade_packages(module, p_dict):
     """Upgrade all packages"""
-    cmd = "%s upgrade -y" % (p_dict["tdnf"])
+    cmd = f'{p_dict["tdnf"]} upgrade -y'
     cmd = prep_tdnf_cmd(cmd, p_dict)
     params = {
         "cmd": cmd,
@@ -258,14 +258,14 @@ def upgrade_packages(module, p_dict):
 def install_packages(module, p_dict):
     """Install given packages"""
     packages = " ".join(p_dict["pkglist"])
-    cmd = "%s install -y" % (p_dict["tdnf"])
+    cmd = f'{p_dict["tdnf"]} install -y'
     cmd = prep_tdnf_cmd(cmd, p_dict)
-    cmd = "%s %s" % (cmd, packages)
+    cmd = f"{cmd} {packages}"
 
     params = {
         "cmd": cmd,
-        "msg_s": "Installed %s package(s)" % (packages),
-        "msg_f": "Failed to install %s" % (packages),
+        "msg_s": f"Installed {packages} package(s)",
+        "msg_f": f"Failed to install {packages}",
     }
 
     exec_cmd(module, params)
@@ -274,12 +274,12 @@ def install_packages(module, p_dict):
 def remove_packages(module, p_dict):
     """Erase/Uninstall packages"""
     packages = " ".join(p_dict["pkglist"])
-    cmd = "%s erase -y %s" % (p_dict["tdnf"], packages)
+    cmd = f'{p_dict["tdnf"]} erase -y {packages}'
 
     params = {
         "cmd": cmd,
-        "msg_s": "Removed %s package(s)" % (packages),
-        "msg_f": "Failed to remove %s package(s)" % (packages),
+        "msg_s": f"Removed {packages} package(s)",
+        "msg_f": f"Failed to remove {packages} package(s)",
     }
 
     exec_cmd(module, params)
@@ -296,9 +296,7 @@ def convert_to_list(input_list):
         if not isinstance(sublist, list):
             flat_list.append(sublist)
             continue
-        for item in sublist:
-            flat_list.append(item)
-
+        flat_list.extend(iter(sublist))
     return flat_list
 
 
@@ -351,11 +349,9 @@ def main():
         p_dict["state"] = "absent"
 
     if p_dict["update_cache"]:
-        get_out = True
-        for key in ["name", "upgrade", "security_severity"]:
-            if p_dict[key]:
-                get_out = False
-                break
+        get_out = not any(
+            p_dict[key] for key in ["name", "upgrade", "security_severity"]
+        )
         update_package_db(module, get_out, p_dict)
 
     if p_dict["upgrade"]:

@@ -365,8 +365,7 @@ class DistributedBuilder:
             if status == "Running":
                 break
 
-        cmd = "kubectl cp "
-        cmd += str(
+        cmd = "kubectl cp " + str(
             os.path.join(os.path.dirname(__file__)).replace(
                 "support/package-builder", ""
             )
@@ -427,7 +426,7 @@ class DistributedBuilder:
                 name=podName, namespace="default"
             )
             status = resp.status.phase
-            if status == "Running" or status == "Succeeded":
+            if status in ["Running", "Succeeded"]:
                 break
 
         w = watch.Watch()

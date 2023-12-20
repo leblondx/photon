@@ -132,9 +132,7 @@ class PackageBuilder(object):
         pkgUtils = PackageUtils(self.logName, self.logPath)
 
         if listDependentPackages:
-            self.logger.debug(
-                "Installing the build time dependent packages for " + arch
-            )
+            self.logger.debug(f"Installing the build time dependent packages for {arch}")
             for pkg in listDependentPackages:
                 (
                     packageName,
@@ -184,7 +182,7 @@ class PackageBuilder(object):
     def _buildPackagePrepareFunction(self, package, version, doneList):
         self.package = package
         self.version = version
-        self.logName = "build-" + package + "-" + version
+        self.logName = f"build-{package}-{version}"
         self.logPath = (
             constants.logPath
             + "/"
@@ -216,10 +214,9 @@ class PackageBuilder(object):
         rpmfile = os.path.basename(rpmfile)
         releaseindex = rpmfile.rfind("-")
         if releaseindex == -1:
-            self.logger.error("Invalid rpm file:" + rpmfile)
+            self.logger.error(f"Invalid rpm file:{rpmfile}")
             return None
-        pkg = rpmfile[0:releaseindex]
-        return pkg
+        return rpmfile[:releaseindex]
 
     def _findInstalledPackages(self, sandbox, arch):
         pkgUtils = PackageUtils(self.logName, self.logPath)
@@ -232,7 +229,7 @@ class PackageBuilder(object):
         return listInstalledPackages, listInstalledRPMs
 
     def _checkIfPackageIsAlreadyBuilt(self, package, version, doneList):
-        basePkg = SPECS.getData().getSpecName(package) + "-" + version
+        basePkg = f"{SPECS.getData().getSpecName(package)}-{version}"
         return basePkg in doneList
 
     def _findRunTimeRequiredRPMPackages(self, rpmPackage, version, arch):
@@ -271,15 +268,10 @@ class PackageBuilder(object):
     ):
         rpmfile = pkgUtils.findRPMFile(package, packageVersion, arch)
         if rpmfile is None:
-            self.logger.error(
-                "No rpm file found for package: "
-                + package
-                + "-"
-                + packageVersion
-            )
+            self.logger.error(f"No rpm file found for package: {package}-{packageVersion}")
             raise Exception("Missing rpm file")
         specificRPM = os.path.basename(rpmfile.replace(".rpm", ""))
-        pkg = package + "-" + packageVersion
+        pkg = f"{package}-{packageVersion}"
         if pkg in listInstalledPackages:
             return
         # mark it as installed -  to avoid recursion
@@ -295,13 +287,11 @@ class PackageBuilder(object):
             listInstalledRPMs,
             arch,
         )
-        noDeps = False
-        if (
+        noDeps = (
             package in self.mapPackageToCycles
             or package in self.listNodepsPackages
             or package in constants.noDepsPackageList
-        ):
-            noDeps = True
+        )
         pkgUtils.prepRPMforInstall(
             package, packageVersion, noDeps, destLogPath, arch
         )
@@ -317,34 +307,32 @@ class PackageBuilder(object):
         listInstalledRPMs,
         arch,
     ):
-        listRunTimeDependentPackages = self._findRunTimeRequiredRPMPackages(
-            package, packageVersion, arch
-        )
-        if listRunTimeDependentPackages:
-            for pkg in listRunTimeDependentPackages:
-                if pkg in self.mapPackageToCycles:
-                    continue
-                (
-                    packageName,
-                    packageVersion,
-                ) = StringUtils.splitPackageNameAndVersion(pkg)
-                rpmfile = pkgUtils.findRPMFile(
-                    packageName, packageVersion, arch, True
+        if not (
+            listRunTimeDependentPackages := self._findRunTimeRequiredRPMPackages(
+                package, packageVersion, arch
+            )
+        ):
+            return
+        for pkg in listRunTimeDependentPackages:
+            if pkg in self.mapPackageToCycles:
+                continue
+            (
+                packageName,
+                packageVersion,
+            ) = StringUtils.splitPackageNameAndVersion(pkg)
+            rpmfile = pkgUtils.findRPMFile(
+                packageName, packageVersion, arch, True
+            )
+            if rpmfile is None:
+                self.logger.error(
+                    f"No rpm file found for package: {packageName}-{packageVersion}"
                 )
-                if rpmfile is None:
-                    self.logger.error(
-                        "No rpm file found for package: "
-                        + packageName
-                        + "-"
-                        + packageVersion
-                    )
-                    raise Exception("Missing rpm file")
-                latestPkgRPM = os.path.basename(rpmfile).replace(".rpm", "")
-                if (
-                    pkg in listInstalledPackages
-                    and latestPkgRPM in listInstalledRPMs
-                ):
-                    continue
+                raise Exception("Missing rpm file")
+            latestPkgRPM = os.path.basename(rpmfile).replace(".rpm", "")
+            if (
+                pkg not in listInstalledPackages
+                or latestPkgRPM not in listInstalledRPMs
+            ):
                 self._installPackage(
                     pkgUtils,
                     packageName,
@@ -376,7 +364,7 @@ class PackageBuilder(object):
                 for package in constants.listMakeCheckRPMPkgtoInstall:
                     version = SPECS.getData(arch).getHighestVersion(package)
                     constants.listMakeCheckRPMPkgWithVersionstoInstall.append(
-                        package + "-" + version
+                        f"{package}-{version}"
                     )
 
             listDependentPackages.extend(
@@ -385,7 +373,7 @@ class PackageBuilder(object):
             testPackages = (
                 set(constants.listMakeCheckRPMPkgWithVersionstoInstall)
                 - set(listInstalledPackages)
-                - set([self.package + "-" + self.version])
+                - {f"{self.package}-{self.version}"}
             )
             listTestPackages = list(set(testPackages))
             listDependentPackages = list(set(listDependentPackages))

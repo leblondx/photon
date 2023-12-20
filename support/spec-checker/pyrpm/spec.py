@@ -82,9 +82,7 @@ class _NameValue(_Tag):
 
         # Sub-packages
         if self.name == "name":
-            spec_obj.packages = []
-            spec_obj.packages.append(Package(value))
-
+            spec_obj.packages = [Package(value)]
         if self.name in [
             "description",
             "changelog"
@@ -150,14 +148,14 @@ class _List(_Tag):
         target_obj = _Tag.current_target(spec_obj, context)
 
         if not hasattr(target_obj, self.name):
-            setattr(target_obj, self.name, list())
+            setattr(target_obj, self.name, [])
 
         value = match_obj.group(1)
         if self.name == "packages":
             if value == "-n":
                 subpackage_name = line.rsplit(" ", 1)[-1].rstrip()
             else:
-                subpackage_name = "{}-{}".format(spec_obj.name, value)
+                subpackage_name = f"{spec_obj.name}-{value}"
             package = Package(subpackage_name)
             context["current_subpackage"] = package
             package.is_subpackage = True
@@ -186,10 +184,10 @@ class _List(_Tag):
             for val in tokens:
                 if add:
                     add = False
-                    val = values.pop() + " " + val
+                    val = f"{values.pop()} {val}"
                 elif val in [">=", "!=", ">", "<", "<=", "==", "="]:
                     add = True  # Add next value to this one
-                    val = values.pop() + " " + val
+                    val = f"{values.pop()} {val}"
                 values.append(val)
 
             for val in values:
@@ -209,7 +207,7 @@ class _ListAndDict(_Tag):
 
     def update_impl(self, spec_obj: "Spec", context: Dict[str, Any], match_obj: re.Match, line: str) -> Tuple["Spec", dict]:
         source_name, value = match_obj.groups()
-        dictionary = getattr(spec_obj, "{}_dict".format(self.name))
+        dictionary = getattr(spec_obj, f"{self.name}_dict")
         dictionary[source_name] = value
         target_obj = _Tag.current_target(spec_obj, context)
         getattr(target_obj, self.name).append(value)
@@ -267,8 +265,7 @@ _macro_pattern = re.compile(r"%{(\S+?)\}")
 
 def _parse(spec_obj: "Spec", context: Dict[str, Any], line: str) -> Any:
     for tag in _tags:
-        match = tag.test(line)
-        if match:
+        if match := tag.test(line):
             if "multiline" in context:
                 context.pop("multiline", None)
             return tag.update(spec_obj, context, match, line)
@@ -317,8 +314,7 @@ class Requirement:
         self.name: str
         self.operator: Optional[str]
         self.version: Optional[str]
-        match = Requirement.expr.match(name)
-        if match:
+        if match := Requirement.expr.match(name):
             self.name = match.group(1)
             self.operator = match.group(2)
             self.version = match.group(3)
@@ -393,7 +389,7 @@ class Package:
         self.is_subpackage = False
 
     def __repr__(self) -> str:
-        return "Package('{}')".format(self.name)
+        return f"Package('{self.name}')"
 
 
 class Spec:
@@ -521,5 +517,3 @@ def replace_macros(string: str, spec: Spec) -> str:
 
         return ret
 
-if __name__ == '__main__':
-    pass

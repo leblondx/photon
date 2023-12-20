@@ -153,21 +153,15 @@ class Scheduler(object):
 
     @staticmethod
     def isAllPackagesBuilt():
-        if Scheduler.listOfPackagesToBuild:
-            return False
-        return True
+        return not Scheduler.listOfPackagesToBuild
 
     @staticmethod
     def isAnyPackagesFailedToBuild():
-        if Scheduler.listOfFailedPackages:
-            return True
-        return False
+        return bool(Scheduler.listOfFailedPackages)
 
     @staticmethod
     def isAnyPackagesCurrentlyBuilding():
-        if Scheduler.listOfPackagesCurrentlyBuilding:
-            return True
-        return False
+        return bool(Scheduler.listOfPackagesCurrentlyBuilding)
 
     @staticmethod
     def getNextPackageToBuild():
@@ -203,13 +197,7 @@ class Scheduler(object):
     @staticmethod
     def printStatus():
         Scheduler.logger.info(
-            "Package Status: Total: {} Building: {} Broken: {} Pending: {} Done: {}".format(  # noqa: E501
-                len(Scheduler.sortedList),
-                len(Scheduler.listOfPackagesCurrentlyBuilding),
-                len(Scheduler.listOfFailedPackages),
-                len(Scheduler.listOfPackagesToBuild),
-                len(Scheduler.listOfAlreadyBuiltPackages),
-            )
+            f"Package Status: Total: {len(Scheduler.sortedList)} Building: {len(Scheduler.listOfPackagesCurrentlyBuilding)} Broken: {len(Scheduler.listOfFailedPackages)} Pending: {len(Scheduler.listOfPackagesToBuild)} Done: {len(Scheduler.listOfAlreadyBuiltPackages)}"
         )
 
     @staticmethod
@@ -225,11 +213,9 @@ class Scheduler(object):
             pkgNode = Scheduler.mapPackagesToGraphNodes[package]
             for childPkg in list(pkgNode.childPkgNodes):
                 dependencyLists[package].append(
-                    childPkg.packageName + "-" + childPkg.packageVersion
+                    f"{childPkg.packageName}-{childPkg.packageVersion}"
                 )
-        with open(
-            str(constants.logPath) + "/BuildDependencies.json", "w"
-        ) as graphfile:
+        with open(f"{str(constants.logPath)}/BuildDependencies.json", "w") as graphfile:
             graphfile.write(
                 json.dumps(dependencyLists, sort_keys=True, indent=4)
             )

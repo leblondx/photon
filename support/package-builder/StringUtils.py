@@ -45,7 +45,7 @@ class StringUtils(object):
             filename,
         )
         if m is None:
-            print("Unable to parse " + filename)
+            print(f"Unable to parse {filename}")
             return inputstring
         name = m.group(2)
         return name.replace("_", ".")

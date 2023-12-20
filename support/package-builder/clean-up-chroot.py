@@ -20,17 +20,14 @@ def cleanUpChroot(chrootPath):
     if not unmountmountpoints(listmountpoints):
         return False
 
-    if not removeAllFilesFromChroot(chrootPath):
-        return False
-
-    return True
+    return bool(removeAllFilesFromChroot(chrootPath))
 
 
 def removeAllFilesFromChroot(chrootPath):
     cmd = f"rm -rf {chrootPath}"
     _, _, rc = cmdUtils.runBashCmd(cmd, capture=True, ignore_rc=True)
     if rc:
-        print("Unable to remove files from chroot " + chrootPath)
+        print(f"Unable to remove files from chroot {chrootPath}")
         return False
     return True
 
@@ -44,7 +41,7 @@ def unmountmountpoints(listmountpoints):
         _, _, rc = cmdUtils.runBashCmd(cmd, capture=True, ignore_rc=True)
         if rc:
             result = False
-            print("Unable to unmount " + mountpoint)
+            print(f"Unable to unmount {mountpoint}")
             break
     if not result:
         print("Unable to unmount all mounts. Unable to clean up the chroot")
